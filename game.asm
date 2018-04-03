@@ -2,7 +2,7 @@
   .ineschr 1   ; 8KB CHR data
   .inesmap 0   ; Mapper 0
   .inesmir 1   ; Background mirroring
- 
+ ;Hello
 
 ; ____              _       ___  
 ;|  _ \            | |     / _ \ 
