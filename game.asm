@@ -63,7 +63,7 @@ loadPaletteLoop:
   LDA #$80
   STA $0200        ; put sprite 0 in center ($80) of screen vert
   STA $0203        ; put sprite 0 in center ($80) of screen horiz
-  LDA #$0D
+  LDA #$44
   STA $0201        ; tile number = 0
   LDA #$00
   STA $0202        ; color = 0, no flipping
@@ -72,19 +72,28 @@ loadPaletteLoop:
   STA $0204        ; put sprite 0 in center ($80) of screen vert
   LDA #$88
   STA $0207        ; put sprite 0 in center ($80) of screen horiz
-  LDA #$0A
+  LDA #$44
   STA $0205        ; tile number = 0
-  LDA #$00
+  LDA #%01000000
   STA $0206        ; color = 0, no flipping
 
-  LDA #$80
+  LDA #$88
   STA $0208        ; put sprite 0 in center ($80) of screen vert
-  LDA #$90
+  LDA #$80
   STA $020B        ; put sprite 0 in center ($80) of screen horiz
-  LDA #$17
+  LDA #$45
   STA $0209        ; tile number = 0
   LDA #$00
   STA $020A        ; color = 0, no flipping
+
+  LDA #$88
+  STA $020C        ; put sprite 0 in center ($80) of screen vert
+  LDA #$88
+  STA $020F        ; put sprite 0 in center ($80) of screen horiz
+  LDA #$45
+  STA $020D        ; tile number = 0
+  LDA #%01000000
+  STA $020E        ; color = 0, no flipping
 
   LDA #%10000000   ; enable NMI, sprites
   STA $2000
