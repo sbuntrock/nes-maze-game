@@ -26,7 +26,11 @@
 ;   \  / (_| | |   
 ;    \/ \__,_|_|   
                    
-                   
+  .rsset $000
+guyx .rs 1
+guyy .rs 1
+controller1   .rs 1  ; player 1 gamepad buttons, one bit per button
+
 
 ; ____              _       ___  
 ;|  _ \            | |     / _ \ 
@@ -37,11 +41,6 @@
                                  
   .bank 0
   .org $C000
-
-vblankwait:       
-  BIT $2002
-  BPL vblankwait
-  RTS
 
 RESET:
   SEI          ; disable IRQs
@@ -85,6 +84,11 @@ loadPaletteLoop:
   CPX #$20
   BNE loadPaletteLoop
   
+  LDA $80
+  STA guyx
+  STA guyy
+
+
 loadSprites:
   LDX #$00              ; start at 0
 loadSpritesLoop:
@@ -106,10 +110,45 @@ Forever:
 
 NMI: ;Setup Sprite DMA Transfer
   LDA #$00
-  STA $2003 
+  STA $2003
   LDA #$02
-  STA $4014  
+  STA $4014
+
+  JSR ReadController1
+
+  LDA controller1
+  AND #%10000000
+  BNE PaletteSwap
+
   RTI
+
+vblankwait:       
+  BIT $2002
+  BPL vblankwait
+  RTS
+
+ReadController1:
+  LDA #$01
+  STA $4016
+  LDA #$00
+  STA $4016
+  LDX #$08
+ReadController1Loop:
+  LDA $4016
+  LSR A            ; bit0 -> Carry
+  ROL controller1     ; bit0 <- Carry
+  DEX
+  BNE ReadController1Loop
+  RTS
+
+PaletteSwap:
+  LDA #%00000001
+  STA $0202
+  STA $020A
+  LDA #%01000001
+  STA $0206
+  STA $020E
+  RTS
 
 ; ____              _      __ 
 ;|  _ \            | |    /_ |
