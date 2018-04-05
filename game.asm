@@ -17,7 +17,14 @@
 ;| |___| (_) | | | \__ \ |_ 
 ; \_____\___/|_| |_|___/\__|
                             
-                            
+BUTTON_A      = %10000000
+BUTTON_B      = %01000000
+BUTTON_SELECT = %00100000
+BUTTON_START  = %00010000
+BUTTON_UP     = %00001000
+BUTTON_DOWN   = %00000100
+BUTTON_LEFT   = %00000010
+BUTTON_RIGHT  = %00000001
 
 ;__      __        
 ;\ \    / /        
@@ -29,8 +36,7 @@
   .rsset $000
 guyx .rs 1
 guyy .rs 1
-controller1   .rs 1  ; player 1 gamepad buttons, one bit per button
-
+controller1   .rs 1  ; player 1 buttons
 
 ; ____              _       ___  
 ;|  _ \            | |     / _ \ 
@@ -53,9 +59,9 @@ RESET:
   STX $2000    ; disable NMI
   STX $2001    ; disable rendering
   STX $4010    ; disable DMC IRQs
-  JSR vblankwait
+  JSR VBlankWait
 
-clrmem:
+Clrmem:
   LDA #$00
   STA $0000, x
   STA $0100, x
@@ -67,8 +73,8 @@ clrmem:
   LDA #$FE
   STA $0300, x
   INX
-  BNE clrmem
-  JSR vblankwait
+  BNE Clrmem
+  JSR VBlankWait
 
 LoadPalettes:
   LDA $2002
@@ -77,17 +83,16 @@ LoadPalettes:
   LDA #$00
   STA $2006
   LDX #$00    
-loadPaletteLoop:
+LoadPaletteLoop:
   LDA palette, x
   STA $2007
   INX
   CPX #$20
-  BNE loadPaletteLoop
+  BNE LoadPaletteLoop
   
   LDA $80
   STA guyx
   STA guyy
-
 
 loadSprites:
   LDX #$00              ; start at 0
@@ -117,14 +122,14 @@ NMI: ;Setup Sprite DMA Transfer
   JSR ReadController1
 
   LDA controller1
-  AND #%10000000
+  AND #BUTTON_B
   BNE PaletteSwap
 
   RTI
 
-vblankwait:       
+VBlankWait:       
   BIT $2002
-  BPL vblankwait
+  BPL VBlankWait
   RTS
 
 ReadController1:
