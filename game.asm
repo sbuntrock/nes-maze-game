@@ -189,5 +189,4 @@ sprites:
   
   .bank 2
   .org $0000
-  .incbin "sprite.chr"
-  .incbin "background.chr"
+  .incbin "game.chr"
