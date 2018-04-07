@@ -16,15 +16,16 @@
 ;| |    / _ \| '_ \/ __| __|
 ;| |___| (_) | | | \__ \ |_ 
 ; \_____\___/|_| |_|___/\__|
-                            
-BUTTON_A      = %10000000
-BUTTON_B      = %01000000
-BUTTON_SELECT = %00100000
-BUTTON_START  = %00010000
-BUTTON_UP     = %00001000
-BUTTON_DOWN   = %00000100
-BUTTON_LEFT   = %00000010
-BUTTON_RIGHT  = %00000001
+
+PLAYER_ADDRESS = $0200
+BUTTON_A       = %10000000
+BUTTON_B       = %01000000
+BUTTON_SELECT  = %00100000
+BUTTON_START   = %00010000
+BUTTON_UP      = %00001000
+BUTTON_DOWN    = %00000100
+BUTTON_LEFT    = %00000010
+BUTTON_RIGHT   = %00000001
 
 ;__      __        
 ;\ \    / /        
@@ -34,9 +35,9 @@ BUTTON_RIGHT  = %00000001
 ;    \/ \__,_|_|   
                    
   .rsset $000
-guyx .rs 1
-guyy .rs 1
-controller1   .rs 1  ; player 1 buttons
+playerx      .rs 1
+playery      .rs 1
+controller1  .rs 1  ; player 1 buttons
 
 ; ____              _       ___  
 ;|  _ \            | |     / _ \ 
@@ -90,18 +91,18 @@ LoadPaletteLoop:
   CPX #$20
   BNE LoadPaletteLoop
   
-  LDA $80
-  STA guyx
-  STA guyy
+  LDA #$20
+  STA playerx
+  STA playery
 
-loadSprites:
+LoadSprites:
   LDX #$00              ; start at 0
-loadSpritesLoop:
+LoadSpritesLoop:
   LDA sprites, x        ; load data from address (sprites +  x)
   STA $0200, x          ; store into RAM address ($0200 + x)
   INX                   ; X = X + 1
   CPX #$20              ; Compare X to hex $20, decimal 32
-  BNE loadSpritesLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
+  BNE LoadSpritesLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
                         ; if compare was equal to 32, keep going down
 
   LDA #%10000000   ; enable NMI, sprites
@@ -119,11 +120,15 @@ NMI: ;Setup Sprite DMA Transfer
   LDA #$02
   STA $4014
 
+  JSR UpdatePlayer
+
   JSR ReadController1
 
-  LDA controller1
-  AND #BUTTON_B
-  BNE PaletteSwap
+  JSR PaletteSwap
+  JSR GoRight
+  JSR GoLeft
+  JSR GoUp
+  JSR GoDown
 
   RTI
 
@@ -141,18 +146,84 @@ ReadController1:
 ReadController1Loop:
   LDA $4016
   LSR A            ; bit0 -> Carry
-  ROL controller1     ; bit0 <- Carry
+  ROL controller1  ; bit0 <- Carry
   DEX
   BNE ReadController1Loop
   RTS
 
+UpdatePlayer:
+  LDA playery
+  STA PLAYER_ADDRESS
+  STA PLAYER_ADDRESS+4
+  CLC
+  ADC #$08
+  STA PLAYER_ADDRESS+8
+  STA PLAYER_ADDRESS+12
+
+  LDA playerx
+  STA PLAYER_ADDRESS+3
+  STA PLAYER_ADDRESS+11
+  CLC
+  ADC #$08
+  STA PLAYER_ADDRESS+7
+  STA PLAYER_ADDRESS+15
+  RTS
+
 PaletteSwap:
+  LDA controller1
+  AND #BUTTON_B
+  BEQ PaletteSwapDone
   LDA #%00000001
-  STA $0202
-  STA $020A
+  STA PLAYER_ADDRESS+2
+  STA PLAYER_ADDRESS+10
   LDA #%01000001
-  STA $0206
-  STA $020E
+  STA PLAYER_ADDRESS+6
+  STA PLAYER_ADDRESS+14
+PaletteSwapDone:
+  RTS
+
+GoRight:
+  LDA controller1
+  AND #BUTTON_RIGHT
+  BEQ GoRightDone
+  LDA playerx
+  CLC
+  ADC #$01 ;(A + M + Carryflag)
+  STA playerx
+GoRightDone:
+  RTS
+
+GoLeft:
+  LDA controller1
+  AND #BUTTON_LEFT
+  BEQ GoLeftDone
+  LDA playerx
+  SEC
+  SBC #$01 
+  STA playerx
+GoLeftDone:
+  RTS
+
+GoUp:
+  LDA controller1
+  AND #BUTTON_UP
+  BEQ GoUpDone
+  LDA playery
+  SEC
+  SBC #$01 
+  STA playery
+GoUpDone:
+  RTS
+
+GoDown:
+  LDA controller1
+  AND #BUTTON_DOWN
+  BEQ GoDownDone
+  LDA playery
+  CLC
+  ADC #$01 ;(A + M + Carryflag)
+  STA playery
+GoDownDone:
   RTS
 
 ; ____              _      __ 
@@ -169,11 +240,11 @@ palette:
   .db $0F,$20,$10,$00 , $0F,$35,$36,$37 , $0F,$39,$3A,$3B , $0F,$3D,$3E,$0F  ;background palette data
   .db $0F,$3C,$2C,$1C , $0F,$25,$15,$05 , $0F,$3A,$2A,$1A , $0F,$02,$38,$3C  ;sprite palette data
 
-sprites:
-  .db $80, $44, %00000000, $80 ;Guy 1
-  .db $80, $44, %01000000, $88 ;Guy 2
-  .db $88, $45, %00000000, $80 ;Guy 3
-  .db $88, $45, %01000000, $88 ;Guy 4
+sprites: ;y,tile,attr,x
+  .db $F9, $44, %00000000, $00 ;Player 1
+  .db $F9, $44, %01000000, $00 ;Player 2
+  .db $F9, $45, %00000000, $00 ;Player 3
+  .db $F9, $45, %01000000, $00 ;Player 4
 
   .org $FFFA     ;Interrupts
   .dw NMI        
