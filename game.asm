@@ -101,14 +101,44 @@ LoadSpritesLoop:
   LDA sprites, x        ; load data from address (sprites +  x)
   STA $0200, x          ; store into RAM address ($0200 + x)
   INX                   ; X = X + 1
-  CPX #$20              ; Compare X to hex $20, decimal 32
+  CPX #$10              ; Compare X to hex $20, decimal 32
   BNE LoadSpritesLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
                         ; if compare was equal to 32, keep going down
+
+LoadBackground:
+  LDA $2002             ; read PPU status to reset the high/low latch
+  LDA #$20
+  STA $2006             ; write the high byte of $2000 address
+  LDA #$00
+  STA $2006             ; write the low byte of $2000 address
+  LDX #$00              ; start out at 0
+LoadBackgroundLoop:
+  LDA background, x     ; load data from address (background + the value in x)
+  STA $2007             ; write to PPU
+  INX                   ; X = X + 1
+  CPX #$FF              ; Compare X to hex $80, decimal 128 - copying 128 bytes
+  BNE LoadBackgroundLoop  ; Branch to LoadBackgroundLoop if compare was Not Equal to zero
+                        ; if compare was equal to 128, keep going down
+
+LoadAttribute:
+  LDA $2002             ; read PPU status to reset the high/low latch
+  LDA #$23
+  STA $2006             ; write the high byte of $23C0 address
+  LDA #$C0
+  STA $2006             ; write the low byte of $23C0 address
+  LDX #$00              ; start out at 0
+
+LoadAttributeLoop:
+  LDA attribute, x      ; load data from address (attribute + the value in x)
+  STA $2007             ; write to PPU
+  INX                   ; X = X + 1
+  CPX #$08              ; Compare X to hex $08, decimal 8 - copying 8 bytes
+  BNE LoadAttributeLoop
 
   LDA #%10000000   ; enable NMI, sprites
   STA $2000
 
-  LDA #%00010000   ; enable sprites
+  LDA #%00011110   ; enable sprites
   STA $2001
 
 Forever:
@@ -129,6 +159,15 @@ NMI: ;Setup Sprite DMA Transfer
   JSR GoLeft
   JSR GoUp
   JSR GoDown
+
+ ;;This is the PPU clean up section, so rendering the next frame starts properly.
+  LDA #%10000000   ; enable NMI, sprites from Pattern Table 0, background from Pattern Table 1
+  STA $2000
+  LDA #%00011110   ; enable sprites, enable background, no clipping on left side
+  STA $2001
+  LDA #$00        ;;tell the ppu there is no background scrolling
+  STA $2005
+  STA $2005
 
   RTI
 
@@ -245,6 +284,13 @@ sprites: ;y,tile,attr,x
   .db $F9, $44, %01000000, $00 ;Player 2
   .db $F9, $45, %00000000, $00 ;Player 3
   .db $F9, $45, %01000000, $00 ;Player 4
+
+background:
+  .incbin "game.nam"
+
+attribute:
+  .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
+
 
   .org $FFFA     ;Interrupts
   .dw NMI        
