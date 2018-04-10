@@ -38,6 +38,7 @@ BUTTON_RIGHT   = %00000001
 playerx      .rs 1
 playery      .rs 1
 controller1  .rs 1  ; player 1 buttons
+backroundptr .rs 2  ; 16 bit
 
 ; ____              _       ___  
 ;|  _ \            | |     / _ \ 
@@ -106,19 +107,28 @@ LoadSpritesLoop:
                         ; if compare was equal to 32, keep going down
 
 LoadBackground:
-  LDA $2002             ; read PPU status to reset the high/low latch
-  LDA #$20
-  STA $2006             ; write the high byte of $2000 address
+  LDA $2002              ;Reset PPU Latch
+  LDA #$20 
+  STA $2006
   LDA #$00
-  STA $2006             ; write the low byte of $2000 address
-  LDX #$00              ; start out at 0
+  STA $2006              ;Set background location to $2000
+
+  LDA #LOW(background)
+  STA backroundptr+0
+
+  LDA #HIGH(background)
+  STA backroundptr+1
+
+  LDX #$04               ;4 outer loops with 256 inner loops 4*256-1024
+  LDY #$00
 LoadBackgroundLoop:
-  LDA background, x     ; load data from address (background + the value in x)
-  STA $2007             ; write to PPU
-  INX                   ; X = X + 1
-  CPX #$FF              ; Compare X to hex $80, decimal 128 - copying 128 bytes
-  BNE LoadBackgroundLoop  ; Branch to LoadBackgroundLoop if compare was Not Equal to zero
-                        ; if compare was equal to 128, keep going down
+  LDA [backroundptr+0], y
+  STA $2007
+  INY
+  BNE LoadBackgroundLoop ;Loop 256 times until resets to zero
+  INC backroundptr+1
+  DEX
+  BNE LoadBackgroundLoop
 
 LoadAttribute:
   LDA $2002             ; read PPU status to reset the high/low latch
@@ -127,12 +137,11 @@ LoadAttribute:
   LDA #$C0
   STA $2006             ; write the low byte of $23C0 address
   LDX #$00              ; start out at 0
-
 LoadAttributeLoop:
   LDA attribute, x      ; load data from address (attribute + the value in x)
   STA $2007             ; write to PPU
   INX                   ; X = X + 1
-  CPX #$08              ; Compare X to hex $08, decimal 8 - copying 8 bytes
+  CPX #$40              ; Compare X to hex $08, decimal 8 - copying 8 bytes
   BNE LoadAttributeLoop
 
   LDA #%10000000   ; enable NMI, sprites
@@ -288,7 +297,14 @@ sprites: ;y,tile,attr,x
 background:
   .incbin "game.nam"
 
-attribute:
+attribute: ;8 x 8 = 64
+  .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
+  .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
+  .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
+  .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
+  .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
+  .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
+  .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
   .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
 
 
