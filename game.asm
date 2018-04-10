@@ -26,6 +26,7 @@ BUTTON_UP      = %00001000
 BUTTON_DOWN    = %00000100
 BUTTON_LEFT    = %00000010
 BUTTON_RIGHT   = %00000001
+MOVE_DELAY     = $0A
 
 ;__      __        
 ;\ \    / /        
@@ -35,11 +36,11 @@ BUTTON_RIGHT   = %00000001
 ;    \/ \__,_|_|   
                    
   .rsset $000
-playerx      .rs 1
-playery      .rs 1
-controller1  .rs 1  ; player 1 buttons
-backroundptr .rs 2  ; 16 bit
-
+playerx         .rs 1
+playery         .rs 1
+controller1     .rs 1  ; player 1 buttons
+backroundptr    .rs 2  ; 16 bit
+playermovedelay .rs 1
 ; ____              _       ___  
 ;|  _ \            | |     / _ \ 
 ;| |_) | __ _ _ __ | | __ | | | |
@@ -92,9 +93,12 @@ LoadPaletteLoop:
   CPX #$20
   BNE LoadPaletteLoop
   
-  LDA #$20
+  LDA #$08
   STA playerx
+  LDA #$20
   STA playery
+  LDA #$01
+  STA playermovedelay
 
 LoadSprites:
   LDX #$00              ; start at 0
@@ -159,16 +163,6 @@ NMI: ;Setup Sprite DMA Transfer
   LDA #$02
   STA $4014
 
-  JSR UpdatePlayer
-
-  JSR ReadController1
-
-  JSR PaletteSwap
-  JSR GoRight
-  JSR GoLeft
-  JSR GoUp
-  JSR GoDown
-
  ;;This is the PPU clean up section, so rendering the next frame starts properly.
   LDA #%10000000   ; enable NMI, sprites from Pattern Table 0, background from Pattern Table 1
   STA $2000
@@ -177,6 +171,12 @@ NMI: ;Setup Sprite DMA Transfer
   LDA #$00        ;;tell the ppu there is no background scrolling
   STA $2005
   STA $2005
+
+  JSR UpdatePlayer
+
+  JSR ReadController1
+  JSR PaletteSwap
+  JSR PlayerMove
 
   RTI
 
@@ -230,49 +230,63 @@ PaletteSwap:
 PaletteSwapDone:
   RTS
 
-GoRight:
+PlayerMove: ;Movement code
+  LDA playermovedelay
+  BNE PlayerMoveDelayed
+
+PlayerMoveRight:
   LDA controller1
   AND #BUTTON_RIGHT
-  BEQ GoRightDone
+  BEQ PlayerMoveRightDone
+  LDA #MOVE_DELAY
+  STA playermovedelay
   LDA playerx
   CLC
-  ADC #$01 ;(A + M + Carryflag)
+  ADC #$10 ;(A + M + Carryflag)
   STA playerx
-GoRightDone:
-  RTS
+PlayerMoveRightDone:
 
-GoLeft:
+PlayerMoveLeft:
   LDA controller1
   AND #BUTTON_LEFT
-  BEQ GoLeftDone
+  BEQ PlayerMoveLeftDone
+  LDA #MOVE_DELAY
+  STA playermovedelay
   LDA playerx
   SEC
-  SBC #$01 
+  SBC #$10 
   STA playerx
-GoLeftDone:
-  RTS
+PlayerMoveLeftDone:
 
-GoUp:
+PlayerMoveUp:
   LDA controller1
   AND #BUTTON_UP
-  BEQ GoUpDone
+  BEQ PlayerMoveUpDone
+  LDA #MOVE_DELAY
+  STA playermovedelay
   LDA playery
   SEC
-  SBC #$01 
+  SBC #$10 
   STA playery
-GoUpDone:
-  RTS
+PlayerMoveUpDone:
 
-GoDown:
+PlayerMoveDown:
   LDA controller1
   AND #BUTTON_DOWN
-  BEQ GoDownDone
+  BEQ PlayerMoveDownDone
+  LDA #MOVE_DELAY
+  STA playermovedelay
   LDA playery
   CLC
-  ADC #$01 ;(A + M + Carryflag)
+  ADC #$10 ;(A + M + Carryflag)
   STA playery
-GoDownDone:
+PlayerMoveDownDone:
   RTS
+
+PlayerMoveDelayed:
+  DEC playermovedelay
+  RTS
+
 
 ; ____              _      __ 
 ;|  _ \            | |    /_ |
