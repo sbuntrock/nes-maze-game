@@ -26,7 +26,7 @@ BUTTON_UP      = %00001000
 BUTTON_DOWN    = %00000100
 BUTTON_LEFT    = %00000010
 BUTTON_RIGHT   = %00000001
-MOVE_DELAY     = $0A
+MOVE_DELAY     = $08
 
 ;__      __        
 ;\ \    / /        
@@ -38,9 +38,12 @@ MOVE_DELAY     = $0A
   .rsset $000
 playerx         .rs 1
 playery         .rs 1
+gridx           .rs 1
+gridy           .rs 1
 controller1     .rs 1  ; player 1 buttons
 backroundptr    .rs 2  ; 16 bit
 playermovedelay .rs 1
+leveldata       .rs 180
 ; ____              _       ___  
 ;|  _ \            | |     / _ \ 
 ;| |_) | __ _ _ __ | | __ | | | |
@@ -79,13 +82,22 @@ Clrmem:
   BNE Clrmem
   JSR VBlankWait
 
+LoadLevel:
+  LDX #$00
+LoadlevelLoop:
+  LDA level1, x
+  STA leveldata, x
+  INX
+  CPX #$B4
+  BNE LoadlevelLoop
+
 LoadPalettes:
   LDA $2002
   LDA #$3F
   STA $2006
   LDA #$00
   STA $2006
-  LDX #$00    
+  LDX #$00
 LoadPaletteLoop:
   LDA palette, x
   STA $2007
@@ -93,22 +105,23 @@ LoadPaletteLoop:
   CPX #$20
   BNE LoadPaletteLoop
   
-  LDA #$08
+  LDA #$00 ;00
   STA playerx
-  LDA #$20
+  LDA #$00 ;20
   STA playery
-  LDA #$01
+  LDA #$00
   STA playermovedelay
+  STA gridx
+  STA gridy
 
 LoadSprites:
-  LDX #$00              ; start at 0
+  LDX #$00
 LoadSpritesLoop:
-  LDA sprites, x        ; load data from address (sprites +  x)
-  STA $0200, x          ; store into RAM address ($0200 + x)
-  INX                   ; X = X + 1
-  CPX #$10              ; Compare X to hex $20, decimal 32
-  BNE LoadSpritesLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
-                        ; if compare was equal to 32, keep going down
+  LDA sprites, x
+  STA $0200, x
+  INX
+  CPX #$10
+  BNE LoadSpritesLoop
 
 LoadBackground:
   LDA $2002              ;Reset PPU Latch
@@ -163,6 +176,13 @@ NMI: ;Setup Sprite DMA Transfer
   LDA #$02
   STA $4014
 
+  JSR GridToPlayer
+  JSR UpdatePlayer
+
+  JSR ReadController1
+  JSR PaletteSwap
+  JSR PlayerMove
+
  ;;This is the PPU clean up section, so rendering the next frame starts properly.
   LDA #%10000000   ; enable NMI, sprites from Pattern Table 0, background from Pattern Table 1
   STA $2000
@@ -171,12 +191,6 @@ NMI: ;Setup Sprite DMA Transfer
   LDA #$00        ;;tell the ppu there is no background scrolling
   STA $2005
   STA $2005
-
-  JSR UpdatePlayer
-
-  JSR ReadController1
-  JSR PaletteSwap
-  JSR PlayerMove
 
   RTI
 
@@ -240,10 +254,10 @@ PlayerMoveRight:
   BEQ PlayerMoveRightDone
   LDA #MOVE_DELAY
   STA playermovedelay
-  LDA playerx
+  LDA gridx
   CLC
-  ADC #$10 ;(A + M + Carryflag)
-  STA playerx
+  ADC #$01 ;(A + M + Carryflag)
+  STA gridx
 PlayerMoveRightDone:
 
 PlayerMoveLeft:
@@ -252,10 +266,10 @@ PlayerMoveLeft:
   BEQ PlayerMoveLeftDone
   LDA #MOVE_DELAY
   STA playermovedelay
-  LDA playerx
+  LDA gridx
   SEC
-  SBC #$10 
-  STA playerx
+  SBC #$01 
+  STA gridx
 PlayerMoveLeftDone:
 
 PlayerMoveUp:
@@ -264,10 +278,10 @@ PlayerMoveUp:
   BEQ PlayerMoveUpDone
   LDA #MOVE_DELAY
   STA playermovedelay
-  LDA playery
+  LDA gridy
   SEC
-  SBC #$10 
-  STA playery
+  SBC #$01
+  STA gridy
 PlayerMoveUpDone:
 
 PlayerMoveDown:
@@ -276,15 +290,38 @@ PlayerMoveDown:
   BEQ PlayerMoveDownDone
   LDA #MOVE_DELAY
   STA playermovedelay
-  LDA playery
+  LDA gridy
   CLC
-  ADC #$10 ;(A + M + Carryflag)
-  STA playery
+  ADC #$01 ;(A + M + Carryflag)
+  STA gridy
 PlayerMoveDownDone:
   RTS
 
 PlayerMoveDelayed:
   DEC playermovedelay
+  RTS
+
+GridToPlayer:
+  LDA #$08 ; origin x for grid
+  LDX gridx
+  BEQ GridXLoopDone
+GridXLoop:
+  CLC
+  ADC #$10
+  DEX
+  BNE GridXLoop
+GridXLoopDone:
+  STA playerx
+  LDA #$20
+  LDX gridy
+  BEQ GridYLoopDone
+GridYLoop:
+  CLC
+  ADC #$10
+  DEX
+  BNE GridYLoop
+GridYLoopDone:
+  STA playery
   RTS
 
 
@@ -320,6 +357,26 @@ attribute: ;8 x 8 = 64
   .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
   .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
   .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
+
+level1: ;12x15
+  .db $FF, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $FF
+
 
 
   .org $FFFA     ;Interrupts
