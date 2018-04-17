@@ -155,7 +155,7 @@ LoadAttribute:
   STA $2006             ; write the low byte of $23C0 address
   LDX #$00              ; start out at 0
 LoadAttributeLoop:
-  LDA attribute, x      ; load data from address (attribute + the value in x)
+  LDA background+960, x      ; load data from address (attribute + the value in x)
   STA $2007             ; write to PPU
   INX                   ; X = X + 1
   CPX #$40              ; Compare X to hex $08, decimal 8 - copying 8 bytes
@@ -336,8 +336,8 @@ GridYLoopDone:
   .bank 1
   .org $E000
 palette:
-  .db $0F,$20,$10,$00 , $0F,$35,$36,$37 , $0F,$39,$3A,$3B , $0F,$3D,$3E,$0F  ;background palette data
-  .db $0F,$3C,$2C,$1C , $0F,$25,$15,$05 , $0F,$3A,$2A,$1A , $0F,$02,$38,$3C  ;sprite palette data
+  .incbin "data/background.pal"
+  .incbin "data/sprite.pal"
 
 sprites: ;y,tile,attr,x
   .db $F9, $44, %00000000, $00 ;Player 1
@@ -345,18 +345,8 @@ sprites: ;y,tile,attr,x
   .db $F9, $45, %00000000, $00 ;Player 3
   .db $F9, $45, %01000000, $00 ;Player 4
 
-background:
-  .incbin "game.nam"
-
-attribute: ;8 x 8 = 64
-  .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
-  .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
-  .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
-  .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
-  .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
-  .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
-  .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
-  .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
+background: ; including attribute table
+  .incbin "data/game.nam"
 
 level1: ;12x15
   .db $FF, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
@@ -393,4 +383,4 @@ level1: ;12x15
   
   .bank 2
   .org $0000
-  .incbin "game.chr"
+  .incbin "data/game.chr"
