@@ -38,8 +38,11 @@ MOVE_DELAY     = $08
   .rsset $000
 playerx         .rs 1
 playery         .rs 1
+playermoved     .rs 1
 gridx           .rs 1
 gridy           .rs 1
+prevgridx       .rs 1
+prevgridy       .rs 1
 controller1     .rs 1  ; player 1 buttons
 backroundptr    .rs 2  ; 16 bit
 playermovedelay .rs 1
@@ -113,6 +116,7 @@ LoadPaletteLoop:
   STA playermovedelay
   STA gridx
   STA gridy
+  STA playermoved
 
 LoadSprites:
   LDX #$00
@@ -213,6 +217,10 @@ ReadController1Loop:
   BNE ReadController1Loop
   RTS
 
+PlayerMoveDelayed:
+  DEC playermovedelay
+  RTS
+
 UpdatePlayer:
   LDA playery
   STA PLAYER_ADDRESS
@@ -248,6 +256,11 @@ PlayerMove: ;Movement code
   LDA playermovedelay
   BNE PlayerMoveDelayed
 
+  LDA gridx ;Save previous pos
+  STA prevgridx
+  LDA gridy
+  STA prevgridy
+
 PlayerMoveRight:
   LDA controller1
   AND #BUTTON_RIGHT
@@ -258,6 +271,8 @@ PlayerMoveRight:
   CLC
   ADC #$01 ;(A + M + Carryflag)
   STA gridx
+  LDA #$01
+  STA playermoved
 PlayerMoveRightDone:
 
 PlayerMoveLeft:
@@ -270,6 +285,8 @@ PlayerMoveLeft:
   SEC
   SBC #$01 
   STA gridx
+  LDA #$01
+  STA playermoved
 PlayerMoveLeftDone:
 
 PlayerMoveUp:
@@ -282,6 +299,8 @@ PlayerMoveUp:
   SEC
   SBC #$01
   STA gridy
+  LDA #$01
+  STA playermoved
 PlayerMoveUpDone:
 
 PlayerMoveDown:
@@ -294,11 +313,35 @@ PlayerMoveDown:
   CLC
   ADC #$01 ;(A + M + Carryflag)
   STA gridy
+  LDA #$01
+  STA playermoved
 PlayerMoveDownDone:
-  RTS
 
-PlayerMoveDelayed:
-  DEC playermovedelay
+  ;collison checks
+  LDA playermoved
+  BEQ PlayerMoveDone
+
+  ;calculate bounds
+  LDA gridx
+  BMI UndoMovement ;If x negative
+  CMP #$0F
+  BCS UndoMovement ;If x >=15
+  LDA gridy
+  BMI UndoMovement ;If y negative
+  CMP #$0C
+  BCS UndoMovement ;If y >=12
+  JMP PlayerMoveDone
+  ;calculate level index
+
+UndoMovement:
+  LDA prevgridx
+  STA gridx
+  LDA prevgridy
+  STA gridy
+
+PlayerMoveDone:
+  LDA #$00
+  STA playermoved
   RTS
 
 GridToPlayer:
@@ -349,14 +392,8 @@ background: ; including attribute table
   .incbin "data/game.nam"
 
 level1: ;12x15
-  .db $FF, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-
-  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $01, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
@@ -365,7 +402,13 @@ level1: ;12x15
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $FF
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $01, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
 
 
 
