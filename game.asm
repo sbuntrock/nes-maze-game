@@ -191,7 +191,7 @@ LoadAttributeLoop:
   LDA #%00011110   ; enable sprites
   STA $2001
 
-  ldx #LOW(audio_music_data) ;initialize using the first song data, as it contains the DPCM sound effect
+  ldx #LOW(audio_music_data) ;initialize using the first song data
   ldy #HIGH(audio_music_data)
   lda NTSC_MODE
   jsr FamiToneInit    ;init FamiTone
@@ -254,7 +254,7 @@ UpdatePlayer:
   STA PLAYER_ADDRESS
   STA PLAYER_ADDRESS+4
   CLC
-  ADC #$08
+  ADC #$07
   STA PLAYER_ADDRESS+8
   STA PLAYER_ADDRESS+12
 
