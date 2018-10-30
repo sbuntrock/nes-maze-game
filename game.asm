@@ -254,7 +254,7 @@ UpdatePlayer:
   STA PLAYER_ADDRESS
   STA PLAYER_ADDRESS+4
   CLC
-  ADC #$07
+  ADC #$08
   STA PLAYER_ADDRESS+8
   STA PLAYER_ADDRESS+12
 
@@ -398,7 +398,7 @@ GridXLoop:
   BNE GridXLoop
 GridXLoopDone:
   STA playerx
-  LDA #$20
+  LDA #$1F
   LDX gridy
   BEQ GridYLoopDone
 GridYLoop:
