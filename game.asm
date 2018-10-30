@@ -27,6 +27,24 @@ BUTTON_DOWN    = %00000100
 BUTTON_LEFT    = %00000010
 BUTTON_RIGHT   = %00000001
 MOVE_DELAY     = $08
+STATE_START    = $00
+STATE_PLAYING  = $01
+STATE_END      = $02
+NTSC_MODE      = $01
+
+;FamiTone2 settings
+
+FT_BASE_ADR   = $0300 ;page in the RAM used for FT2 variables, should be $xx00
+FT_TEMP     = $00 ;3 bytes in zeropage used by the library as a scratchpad
+FT_DPCM_OFF   = $c000 ;$c000..$ffc0, 64-byte steps
+FT_SFX_STREAMS  = 4   ;number of sound effects played at once, 1..4
+
+;FT_DPCM_ENABLE      ;undefine to exclude all DMC code
+;FT_SFX_ENABLE     ;undefine to exclude all sound effects code
+;FT_THREAD       ;undefine if you are calling sound effects from the same thread as the sound update call
+
+;FT_PAL_SUPPORT      ;undefine to exclude PAL support
+FT_NTSC_SUPPORT     ;undefine to exclude NTSC support
 
 ;__      __        
 ;\ \    / /        
@@ -35,7 +53,7 @@ MOVE_DELAY     = $08
 ;   \  / (_| | |   
 ;    \/ \__,_|_|   
                    
-  .rsset $000
+  .rsset $003
 debugval        .rs 1
 playerx         .rs 1
 playery         .rs 1
@@ -47,6 +65,7 @@ prevgridy       .rs 1
 controller1     .rs 1  ; player 1 buttons
 backroundptr    .rs 2  ; 16 bit
 playermovedelay .rs 1
+currentstate    .rs 1
 leveldata       .rs 180
 ; ____              _       ___  
 ;|  _ \            | |     / _ \ 
@@ -172,6 +191,12 @@ LoadAttributeLoop:
   LDA #%00011110   ; enable sprites
   STA $2001
 
+  ldx #LOW(audio_music_data) ;initialize using the first song data, as it contains the DPCM sound effect
+  ldy #HIGH(audio_music_data)
+  lda NTSC_MODE
+  jsr FamiToneInit    ;init FamiTone
+
+
 Forever:
   JMP Forever     ; Loop forever
 
@@ -196,6 +221,8 @@ NMI: ;Setup Sprite DMA Transfer
   LDA #$00        ;;tell the ppu there is no background scrolling
   STA $2005
   STA $2005
+
+  JSR FamiToneUpdate
 
   RTI
 
@@ -244,6 +271,8 @@ PaletteSwap:
   LDA controller1
   AND #BUTTON_B
   BEQ PaletteSwapDone
+  LDA #$00
+  JSR FamiToneMusicPlay
   LDA #%00000001
   STA PLAYER_ADDRESS+2
   STA PLAYER_ADDRESS+10
@@ -332,7 +361,7 @@ PlayerMoveDownDone:
   CMP #$0C
   BCS UndoMovement ;If y >=12
   
-  ;calculate level index
+  ;calculate level index = x + (y * width)
   LDA gridx
   LDX gridy
   BEQ LevelIndexLoopDone
@@ -410,16 +439,17 @@ level1: ;15x12
   .db $00, $01, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $01, $00, $00, $00, $00, $00, $00, $00
-
   .db $00, $00, $00, $00, $00, $00, $01, $01, $01, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $01, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $01, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+
+  .include "famitone2.asm"
+  .include "audio.asm"
 
   .org $FFFA     ;Interrupts
   .dw NMI        
