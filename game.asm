@@ -77,6 +77,8 @@ leveldata       .rs 180
   .bank 0
   .org $C000
 
+  .include "util.asm"
+
 RESET:
   SEI          ; disable IRQs
   CLD          ; disable decimal mode
@@ -104,15 +106,6 @@ Clrmem:
   INX
   BNE Clrmem
   JSR VBlankWait
-
-LoadLevel:
-  LDX #$00
-LoadlevelLoop:
-  LDA level1, x
-  STA leveldata, x
-  INX
-  CPX #$B4
-  BNE LoadlevelLoop
 
 LoadPalettes:
   LDA $2002
@@ -147,43 +140,7 @@ LoadSpritesLoop:
   CPX #$10
   BNE LoadSpritesLoop
 
-LoadBackground:
-  LDA $2002              ;Reset PPU Latch
-  LDA #$20 
-  STA $2006
-  LDA #$00
-  STA $2006              ;Set background location to $2000
-
-  LDA #LOW(background)
-  STA backroundptr+0
-
-  LDA #HIGH(background)
-  STA backroundptr+1
-
-  LDX #$04               ;4 outer loops with 256 inner loops 4*256-1024
-  LDY #$00
-LoadBackgroundLoop:
-  LDA [backroundptr+0], y
-  STA $2007
-  INY
-  BNE LoadBackgroundLoop ;Loop 256 times until resets to zero
-  INC backroundptr+1
-  DEX
-  BNE LoadBackgroundLoop
-
-LoadAttribute:
-  LDA $2002             ; read PPU status to reset the high/low latch
-  LDA #$23
-  STA $2006             ; write the high byte of $23C0 address
-  LDA #$C0
-  STA $2006             ; write the low byte of $23C0 address
-  LDX #$00              ; start out at 0
-LoadAttributeLoop:
-  LDA background+960, x      ; load data from address (attribute + the value in x)
-  STA $2007             ; write to PPU
-  INX                   ; X = X + 1
-  CPX #$40              ; Compare X to hex $08, decimal 8 - copying 8 bytes
-  BNE LoadAttributeLoop
+  loadlevel level1, level1col
 
   LDA #%10000000   ; enable NMI, sprites
   STA $2000
@@ -191,11 +148,13 @@ LoadAttributeLoop:
   LDA #%00011110   ; enable sprites
   STA $2001
 
-  ldx #LOW(audio_music_data) ;initialize using the first song data
-  ldy #HIGH(audio_music_data)
-  lda NTSC_MODE
-  jsr FamiToneInit    ;init FamiTone
+  LDX #LOW(audio_music_data) ;initialize using the first song data
+  LDY #HIGH(audio_music_data)
+  LDA NTSC_MODE
+  JSR FamiToneInit    ;init FamiTone
 
+  LDA #$00
+  JSR FamiToneMusicPlay
 
 Forever:
   JMP Forever     ; Loop forever
@@ -245,6 +204,20 @@ ReadController1Loop:
   BNE ReadController1Loop
   RTS
 
+PaletteSwap:
+  LDA controller1
+  AND #BUTTON_B
+  BEQ PaletteSwapDone
+  loadlevel level2,level2col
+  LDA #%00000001
+  STA PLAYER_ADDRESS+2
+  STA PLAYER_ADDRESS+10
+  LDA #%01000001
+  STA PLAYER_ADDRESS+6
+  STA PLAYER_ADDRESS+14
+PaletteSwapDone:
+  RTS
+
 PlayerMoveDelayed:
   DEC playermovedelay
   RTS
@@ -265,21 +238,6 @@ UpdatePlayer:
   ADC #$08
   STA PLAYER_ADDRESS+7
   STA PLAYER_ADDRESS+15
-  RTS
-
-PaletteSwap:
-  LDA controller1
-  AND #BUTTON_B
-  BEQ PaletteSwapDone
-  LDA #$00
-  JSR FamiToneMusicPlay
-  LDA #%00000001
-  STA PLAYER_ADDRESS+2
-  STA PLAYER_ADDRESS+10
-  LDA #%01000001
-  STA PLAYER_ADDRESS+6
-  STA PLAYER_ADDRESS+14
-PaletteSwapDone:
   RTS
 
 PlayerMove: ;Movement code
@@ -431,10 +389,12 @@ sprites: ;y,tile,attr,x
   .db $F9, $45, %00000000, $00 ;Player 3
   .db $F9, $45, %01000000, $00 ;Player 4
 
-background: ; including attribute table
-  .incbin "data/game.nam"
+level1: ; including attribute table
+  .incbin "data/level1.nam"
+level2:
+  .incbin "data/level2.nam"
 
-level1: ;15x12
+level1col: ;15x12
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
   .db $00, $01, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
@@ -444,6 +404,19 @@ level1: ;15x12
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $01, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+level2col: ;15x12
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $01, $00
+  .db $00, $01, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $01, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $01, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $01, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $01, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $01, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
