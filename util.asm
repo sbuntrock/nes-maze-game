@@ -1,6 +1,63 @@
 ;------------------------------------------------------------------------------
+; Waits for VBlank
+;------------------------------------------------------------------------------
+UtilVBlankWait:       
+  BIT $2002
+  BPL UtilVBlankWait
+  RTS
+
+;------------------------------------------------------------------------------
+; Loads game palette
+;------------------------------------------------------------------------------
+UtilLoadPalette:
+  LDA $2002
+  LDA #$3F
+  STA $2006
+  LDA #$00
+  STA $2006
+  LDX #$00
+UtilLoadPaletteLoop:
+  LDA palette, x
+  STA $2007
+  INX
+  CPX #$20
+  BNE UtilLoadPaletteLoop
+  RTS
+
+;------------------------------------------------------------------------------
+; Reads first controller
+;------------------------------------------------------------------------------
+UtilReadController1:
+  LDA #$01
+  STA $4016
+  LDA #$00
+  STA $4016
+  LDX #$08
+UtilReadController1Loop:
+  LDA $4016
+  LSR A            ; bit0 -> Carry
+  ROL controller1  ; bit0 <- Carry
+  DEX
+  BNE UtilReadController1Loop
+  RTS
+
+;------------------------------------------------------------------------------
+; Cleans up PPU after drawing
+;------------------------------------------------------------------------------
+UtilPPUCleanup:
+  LDA #%10000000   ; enable NMI, sprites from Pattern Table 0, background from Pattern Table 1
+  STA $2000
+  LDA #%00011110   ; enable sprites, enable background, no clipping on left side
+  STA $2001
+  LDA #$00        ;;tell the ppu there is no background scrolling
+  STA $2005
+  STA $2005
+  RTS
+
+;------------------------------------------------------------------------------
 ; Macro that loads name table and attributes
 ; in: \1 nametable
+;     \2 collision data
 ;------------------------------------------------------------------------------
 
 loadlevel  .macro
