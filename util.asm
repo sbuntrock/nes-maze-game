@@ -67,6 +67,47 @@ Util.LoadSprites:
   BNE .LoadSpritesLoop
 
 ;------------------------------------------------------------------------------
+; Loads background
+;------------------------------------------------------------------------------
+Util.LoadBackground
+  LDA #%00000110   ; disable PPU
+  STA $2001
+
+  LDA $2002        ;Reset PPU Latch
+  LDA #$20         ;Set PPU Address 2000
+  STA $2006
+  LDA #$00
+  STA $2006
+  
+  ;;Load Nametable
+  LDX #$04               ;4 outer loops with 256 inner loops 4*256-1024
+  LDY #$00
+.LoadBackgroundLoop
+  LDA [backgroundptr], y
+  STA $2007
+  INY
+  BNE .LoadBackgroundLoop ;loop 256 times
+  INC backgroundptr+1
+  DEX
+  BNE .LoadBackgroundLoop
+  ;;Load attributes
+  LDA $2002             ; read PPU status to reset the high/low latch
+  LDA #$23
+  STA $2006             ; write the high byte of $23C0 address
+  LDA #$C0
+  STA $2006             ; write the low byte of $23C0 address
+  LDX #$00              ; start out at 0
+.LoadAttributeLoop
+  LDA titledata+960, x
+  STA $2007
+  INX
+  CPX #$40
+  BNE .LoadAttributeLoop
+
+  LDA #%00011110   ; ReEnable PPU
+  STA $2001
+  RTS
+;------------------------------------------------------------------------------
 ; Loads level
 ;------------------------------------------------------------------------------
 Util.LoadLevel:
