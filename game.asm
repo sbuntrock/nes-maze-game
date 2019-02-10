@@ -33,17 +33,10 @@ STATE_END      = $02
 NTSC_MODE      = $01
 
 ;FamiTone2 settings
-
 FT_BASE_ADR   = $0300 ;page in the RAM used for FT2 variables, should be $xx00
 FT_TEMP     = $00 ;3 bytes in zeropage used by the library as a scratchpad
 FT_DPCM_OFF   = $c000 ;$c000..$ffc0, 64-byte steps
 FT_SFX_STREAMS  = 4   ;number of sound effects played at once, 1..4
-
-;FT_DPCM_ENABLE      ;undefine to exclude all DMC code
-;FT_SFX_ENABLE     ;undefine to exclude all sound effects code
-;FT_THREAD       ;undefine if you are calling sound effects from the same thread as the sound update call
-
-;FT_PAL_SUPPORT      ;undefine to exclude PAL support
 FT_NTSC_SUPPORT     ;undefine to exclude NTSC support
 
 ;__      __        
@@ -54,7 +47,6 @@ FT_NTSC_SUPPORT     ;undefine to exclude NTSC support
 ;    \/ \__,_|_|   
                    
   .rsset $003
-debugval        .rs 1
 playerx         .rs 1
 playery         .rs 1
 playermoved     .rs 1
@@ -90,9 +82,9 @@ RESET:
   STX $2000    ; disable NMI
   STX $2001    ; disable rendering
   STX $4010    ; disable DMC IRQs
-  JSR UtilVBlankWait
+  JSR Util.VBlankWait
 
-Clrmem:
+.Clrmem:
   LDA #$00
   STA $0000, x
   STA $0100, x
@@ -104,31 +96,13 @@ Clrmem:
   LDA #$FE
   STA $0300, x
   INX
-  BNE Clrmem
-  JSR UtilVBlankWait
+  BNE .Clrmem
+  JSR Util.VBlankWait
+  JSR Util.LoadPalette
+  JSR Util.LoadSprites
 
-  JSR UtilLoadPalette
-  
-  LDA #$00 ;00
-  STA playerx
-  LDA #$00 ;20
-  STA playery
-  LDA #$00
-  STA playermovedelay
-  STA gridx
-  STA gridy
-  STA playermoved
-
-LoadSprites:
-  LDX #$00
-LoadSpritesLoop:
-  LDA sprites, x
-  STA $0200, x
-  INX
-  CPX #$10
-  BNE LoadSpritesLoop
-
-  loadlevel level1, level1col
+  ;loadlevel level1, level1col
+  JSR Util.LoadLevel
 
   LDA #%10000000   ; enable NMI, sprites
   STA $2000
@@ -144,8 +118,8 @@ LoadSpritesLoop:
   LDA #$00
   JSR FamiToneMusicPlay
 
-Forever:
-  JMP Forever     ; Loop forever
+.Forever:
+  JMP .Forever     ; Loop forever
 
 NMI: ;Setup Sprite DMA Transfer
   LDA #$00
@@ -156,11 +130,11 @@ NMI: ;Setup Sprite DMA Transfer
   JSR GridToPlayer
   JSR UpdatePlayer
 
-  JSR UtilReadController1
+  JSR Util.ReadController1
   JSR PaletteSwap
   JSR PlayerMove
 
-  JSR UtilPPUCleanup
+  JSR Util.PPUCleanup
   JSR FamiToneUpdate
 
   RTI
@@ -168,15 +142,15 @@ NMI: ;Setup Sprite DMA Transfer
 PaletteSwap:
   LDA controller1
   AND #BUTTON_B
-  BEQ PaletteSwapDone
-  loadlevel level2,level2col
+  BEQ .PaletteSwapDone
+  ;loadlevel level2,level2col
   LDA #%00000001
   STA PLAYER_ADDRESS+2
   STA PLAYER_ADDRESS+10
   LDA #%01000001
   STA PLAYER_ADDRESS+6
   STA PLAYER_ADDRESS+14
-PaletteSwapDone:
+.PaletteSwapDone:
   RTS
 
 PlayerMoveDelayed:
@@ -290,7 +264,6 @@ LevelIndexLoop:
   DEX
   BNE LevelIndexLoop
 LevelIndexLoopDone:
-  STA debugval
   TAX
   LDA leveldata, x
   BEQ PlayerMoveDone
@@ -350,23 +323,18 @@ sprites: ;y,tile,attr,x
   .db $F9, $45, %00000000, $00 ;Player 3
   .db $F9, $45, %01000000, $00 ;Player 4
 
-level1: ; including attribute table
-  .incbin "data/level1.nam"
-level2:
-  .incbin "data/level2.nam"
-
 level1col: ;15x12
-  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $00, $01, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $10, $00
   .db $00, $01, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $01, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $01, $01, $01, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $01, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  .db $00, $01, $00, $01, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-  .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $01, $00
+  .db $00, $01, $01, $01, $00, $00, $00, $00, $00, $00, $00, $00, $00, $01, $00
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
 level2col: ;15x12
   .db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $01, $00

@@ -1,50 +1,50 @@
 ;------------------------------------------------------------------------------
 ; Waits for VBlank
 ;------------------------------------------------------------------------------
-UtilVBlankWait:       
+Util.VBlankWait:       
   BIT $2002
-  BPL UtilVBlankWait
+  BPL Util.VBlankWait
   RTS
 
 ;------------------------------------------------------------------------------
 ; Loads game palette
 ;------------------------------------------------------------------------------
-UtilLoadPalette:
+Util.LoadPalette:
   LDA $2002
   LDA #$3F
   STA $2006
   LDA #$00
   STA $2006
   LDX #$00
-UtilLoadPaletteLoop:
+.LoadPaletteLoop:
   LDA palette, x
   STA $2007
   INX
   CPX #$20
-  BNE UtilLoadPaletteLoop
+  BNE .LoadPaletteLoop
   RTS
 
 ;------------------------------------------------------------------------------
 ; Reads first controller
 ;------------------------------------------------------------------------------
-UtilReadController1:
+Util.ReadController1:
   LDA #$01
   STA $4016
   LDA #$00
   STA $4016
   LDX #$08
-UtilReadController1Loop:
+.ReadController1Loop:
   LDA $4016
   LSR A            ; bit0 -> Carry
   ROL controller1  ; bit0 <- Carry
   DEX
-  BNE UtilReadController1Loop
+  BNE .ReadController1Loop
   RTS
 
 ;------------------------------------------------------------------------------
 ; Cleans up PPU after drawing
 ;------------------------------------------------------------------------------
-UtilPPUCleanup:
+Util.PPUCleanup:
   LDA #%10000000   ; enable NMI, sprites from Pattern Table 0, background from Pattern Table 1
   STA $2000
   LDA #%00011110   ; enable sprites, enable background, no clipping on left side
@@ -55,61 +55,93 @@ UtilPPUCleanup:
   RTS
 
 ;------------------------------------------------------------------------------
-; Macro that loads name table and attributes
-; in: \1 nametable
-;     \2 collision data
+; Loads Sprites
 ;------------------------------------------------------------------------------
+Util.LoadSprites:
+  LDX #$00
+.LoadSpritesLoop:
+  LDA sprites, x
+  STA $0200, x
+  INX
+  CPX #(4 * 4)        ;Load 4 sprites
+  BNE .LoadSpritesLoop
 
-loadlevel  .macro
+;------------------------------------------------------------------------------
+; Loads level
+;------------------------------------------------------------------------------
+Util.LoadLevel:
   LDA #%00000110   ; disable PPU
   STA $2001
-LoadBackground\@:
-  LDA $2002              ;Reset PPU Latch
-  LDA #$20 
+  LDA $2002        ;Reset PPU Latch
+  LDA #$20         ;Set PPU Address 2000
   STA $2006
   LDA #$00
-  STA $2006              ;Set background location to $2000
-
-  LDA #LOW(\1)
-  STA backroundptr+0
-
-  LDA #HIGH(\1)
-  STA backroundptr+1
-
-  LDX #$04               ;4 outer loops with 256 inner loops 4*256-1024
-  LDY #$00
-LoadBackgroundLoop\@:
-  LDA [backroundptr+0], y
+  STA $2006 
+  LDX #$00         ;Fill top of sceen with blocks
+  LDA #$48
+.LoadLevelTopLoop:
   STA $2007
-  INY
-  BNE LoadBackgroundLoop\@ ;Loop 256 times until resets to zero
-  INC backroundptr+1
-  DEX
-  BNE LoadBackgroundLoop\@
-
-LoadAttribute\@:
+  INX
+  CPX #$81         
+  BNE .LoadLevelTopLoop
+  LDY #$00         ;y=level index
+  LDA #$00		   ;a=position in y column
+.LoadLevelLoop:
+  PHA
+  JSR .LoadLevelByRow
+  TYA
+  SBC #$0F
+  TAY
+  JSR .LoadLevelByRow
+  PLA
+  ADC #($01-1)     ;Sub 1 because of carry flag
+  CMP #$0C
+  BNE .LoadLevelLoop
+  LDX #$00         ;Fill bottom of sceen with blocks
+  LDA #$48
+.LoadLevelBottomLoop:
+  STA $2007
+  INX
+  CPX #$1F         
+  BNE .LoadLevelBottomLoop
   LDA $2002             ; read PPU status to reset the high/low latch
   LDA #$23
   STA $2006             ; write the high byte of $23C0 address
   LDA #$C0
   STA $2006             ; write the low byte of $23C0 address
-  LDX #$00              ; start out at 0
-LoadAttributeLoop\@:
-  LDA \1+960, x      ; load data from address (attribute + the value in x)
-  STA $2007             ; write to PPU
-  INX                   ; X = X + 1
-  CPX #$40              ; Compare X to hex $08, decimal 8 - copying 8 bytes
-  BNE LoadAttributeLoop\@
-
-LoadLevelCol\@:
   LDX #$00
-LoadlevelColLoop\@:
-  LDA \2, x
-  STA leveldata, x
-  INX
-  CPX #$B4
-  BNE LoadlevelColLoop\@
+  LDA #$00              ; Only use first pallet
+.LoadAttributeLoop:
+  STA $2007             
+  INX                   ; 
+  CPX #$40              ; 64 Entries
+  BNE .LoadAttributeLoop
 
   LDA #%00011110   ; ReEnable PPU
   STA $2001
-  .endm
+
+  RTS
+
+.LoadLevelByRow:
+  LDX #$00         ;x=position in x column
+.LoadLevelByRowLoop:
+  LDA level1col, y
+  STA leveldata, y ;Save level to ram
+  CMP #$00
+  BNE .LevelTileBlock
+.LevelTileEmpty:
+  LDA #$FF
+  JMP .LevelTileDetermined
+.LevelTileBlock:
+  LDA #$48
+.LevelTileDetermined:
+  STA $2007
+  STA $2007
+  INX
+  INY
+  CPX #$0F
+  BNE .LoadLevelByRowLoop
+  LDA #$48     ;2 extra blocks per row
+  STA $2007
+  STA $2007
+  RTS
