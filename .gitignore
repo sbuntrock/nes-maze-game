@@ -2,4 +2,6 @@
 /game.nes
 /game.nes.deb
 /tools/fceu.cfg
+/audio.txt
+/audio.asm
 *.cfg
