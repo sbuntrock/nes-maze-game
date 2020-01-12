@@ -164,17 +164,22 @@ Util.LoadLevel:
   RTS
 
 .LoadLevelByRow:
-  LDX #$00         ;x=position in x column
+  LDX #$00         ;x=position in x column 
 .LoadLevelByRowLoop:
   LDA level1col, y
   STA leveldata, y ;Save level to ram
   CMP #$09
   BEQ .LevelTileBlock
+  CMP #$02
+  BEQ .LevelTileExit
 .LevelTileEmpty:
   LDA #$FF
   JMP .LevelTileDetermined
 .LevelTileBlock:
   LDA #$48
+  JMP .LevelTileDetermined
+.LevelTileExit:
+  LDA #$57
 .LevelTileDetermined:
   STA $2007
   STA $2007
