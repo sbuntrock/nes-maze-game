@@ -47,18 +47,29 @@ FT_NTSC_SUPPORT
 ;    \/ \__,_|_|   
                    
   .rsset $003
-playerx         .rs 1  ;x pos on screen
-playery         .rs 1  ;y pos on screen
-playermoved     .rs 1
-gridx           .rs 1
-gridy           .rs 1
-prevgridx       .rs 1
-prevgridy       .rs 1
-controller1     .rs 1  ; player 1 buttons
-backgroundptr   .rs 2  ; 16 bit
-playermovedelay .rs 1
-currentstate    .rs 1
-leveldata       .rs 180
+
+;Global variables
+backgroundptr   .rs 2   ; 16 bit background pointer
+currentstate    .rs 1   ; current game state
+controller1     .rs 1   ; player 1 buttons
+
+;Player variables
+playerx         .rs 1   ; x pos on screen
+playery         .rs 1   ; y pos on screen
+playermoved     .rs 1   ; if the player moved this frame
+gridx           .rs 1   ; player's x position on the grid
+gridy           .rs 1   ; player's y position on the grid
+prevgridx       .rs 1   ; player's previous x position before moving on the grid
+prevgridy       .rs 1   ; player's previous y position before moving on the grid
+playermovedelay .rs 1   ; players move delay
+
+;Level variables
+levelstartx     .rs 1   ;level starting x position
+levelstarty     .rs 1   ;level starting y position
+levelendx       .rs 1   ;level ending x position
+levelendy       .rs 1   ;level ending y position
+leveldata       .rs 180 ; current level grid data
+
 ; ____              _       ___  
 ;|  _ \            | |     / _ \ 
 ;| |_) | __ _ _ __ | | __ | | | |
