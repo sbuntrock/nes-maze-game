@@ -168,8 +168,8 @@ Util.LoadLevel:
 .LoadLevelByRowLoop:
   LDA level1col, y
   STA leveldata, y ;Save level to ram
-  CMP #$00
-  BNE .LevelTileBlock
+  CMP #$09
+  BEQ .LevelTileBlock
 .LevelTileEmpty:
   LDA #$FF
   JMP .LevelTileDetermined

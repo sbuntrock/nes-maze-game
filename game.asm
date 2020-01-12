@@ -325,7 +325,8 @@ LevelIndexLoop:
 LevelIndexLoopDone:
   TAX
   LDA leveldata, x
-  BEQ PlayerMoveDone
+  CMP #$09
+  BCC PlayerMoveDone
 
 UndoMovement:
   LDA prevgridx
