@@ -123,7 +123,7 @@ Util.LoadLevel:
 .LoadLevelTopLoop:
   STA $2007
   INX
-  CPX #$81         
+  CPX #$61         
   BNE .LoadLevelTopLoop
   LDY #$00         ;y=level index
   LDA #$00		   ;a=position in y column

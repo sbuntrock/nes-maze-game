@@ -350,7 +350,7 @@ GridToScreen:
   BNE .GridXLoop
 .GridXLoopDone:
   STA playerx
-  LDA #$1F
+  LDA #$17
   LDX gridy
   BEQ .GridYLoopDone
 .GridYLoop:
