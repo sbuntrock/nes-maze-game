@@ -46,7 +46,7 @@ FT_NTSC_SUPPORT
 ;   \  / (_| | |   
 ;    \/ \__,_|_|   
                    
-  .rsset $003
+arg1            .rs 1   ; used for arguments to functions
 
 ;Global variables
 backgroundptr   .rs 2   ; 16 bit background pointer
@@ -123,8 +123,6 @@ RESET:
   LDA #HIGH(titledata)
   STA backgroundptr+1
   JSR Util.LoadBackground
-  
-  ;JSR Util.LoadLevel
 
   ;;Setup Famitone
   LDX #LOW(audio_music_data) 
@@ -158,7 +156,6 @@ NMI:
 .DrawingDone:
 
   JSR Util.PPUCleanup
-
   JSR Util.ReadController1
 
 GameLoop:

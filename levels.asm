@@ -1,4 +1,6 @@
 ; $00 empty
+; $01 start
+; $02 finish
 ; $09 wall
 
 

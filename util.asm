@@ -67,7 +67,7 @@ Util.LoadSprites:
   BNE .LoadSpritesLoop
 
 ;------------------------------------------------------------------------------
-; Loads background
+; Loads background from backgroundptr (2 bytes)
 ;------------------------------------------------------------------------------
 Util.LoadBackground
   LDA #%00000110   ; disable PPU
@@ -117,34 +117,45 @@ Util.LoadLevel:
   LDA #$20         ;Set PPU Address 2000
   STA $2006
   LDA #$00
-  STA $2006 
-  LDX #$00         ;Fill top of sceen with blocks
+  STA $2006
+
+  ;Fill top of sceen with blocks
+  LDX #$00         
   LDA #$48
 .LoadLevelTopLoop:
   STA $2007
   INX
   CPX #$61         
   BNE .LoadLevelTopLoop
+
+  ;Fill main part of level
   LDY #$00         ;y=level index
   LDA #$00		   ;a=position in y column
 .LoadLevelLoop:
-  PHA
+  PHA  ; save a to stack for now
+  LDA #$00
+  STA arg1
   JSR .LoadLevelByRow
   TYA
   SBC #$0F
   TAY
+  LDA #$01
+  STA arg1
   JSR .LoadLevelByRow
   PLA
   ADC #($01-1)     ;Sub 1 because of carry flag
   CMP #$0C
   BNE .LoadLevelLoop
-  LDX #$00         ;Fill bottom of sceen with blocks
+  
+  ;Fill bottom of sceen with blocks
+  LDX #$00         
   LDA #$48
 .LoadLevelBottomLoop:
   STA $2007
   INX
   CPX #$1F         
   BNE .LoadLevelBottomLoop
+
   LDA $2002             ; read PPU status to reset the high/low latch
   LDA #$23
   STA $2006             ; write the high byte of $23C0 address
@@ -163,6 +174,11 @@ Util.LoadLevel:
 
   RTS
 
+;------------------------------------------------------------------------------
+; Loads level by row
+; y -> y position in level data
+; arg1 -> 0 for top row 1 for bottom row
+;------------------------------------------------------------------------------
 .LoadLevelByRow:
   LDX #$00         ;x=position in x column 
 .LoadLevelByRowLoop:
@@ -172,17 +188,38 @@ Util.LoadLevel:
   BEQ .LevelTileBlock
   CMP #$02
   BEQ .LevelTileExit
+  CMP #$01
+  BEQ .LevelTileStart
 .LevelTileEmpty:
   LDA #$FF
-  JMP .LevelTileDetermined
+  STA $2007
+  STA $2007
+  JMP .levelTileDrawn
 .LevelTileBlock:
   LDA #$48
-  JMP .LevelTileDetermined
+  STA $2007
+  STA $2007
+  JMP .levelTileDrawn
+.LevelTileStart:
+  LDA #$FF
+  STA $2007
+  STA $2007
+  JMP .levelTileDrawn
 .LevelTileExit:
-  LDA #$57
-.LevelTileDetermined:
+  LDA arg1
+  CMP #$00
+  BEQ .levelTileExitTop
+  LDA #$68
   STA $2007
+  LDA #$69
   STA $2007
+  JMP .levelTileDrawn
+.levelTileExitTop:
+  LDA #$58
+  STA $2007
+  LDA #$59
+  STA $2007
+.levelTileDrawn:
   INX
   INY
   CPX #$0F
