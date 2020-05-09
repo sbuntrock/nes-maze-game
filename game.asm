@@ -46,9 +46,10 @@ FT_NTSC_SUPPORT
 ;   \  / (_| | |   
 ;    \/ \__,_|_|   
                    
-arg1            .rs 1   ; used for arguments to functions
+  .rsset $0003 ; bytes 0,1,2 used for famitone
 
 ;Global variables
+arg1            .rs 1   ; used for arguments to functions
 backgroundptr   .rs 2   ; 16 bit background pointer
 currentstate    .rs 1   ; current game state
 controller1     .rs 1   ; player 1 buttons
